@@ -1,7 +1,7 @@
 /**
  * @format
  */
-import {AppRoutes} from './route';
+import {AppRoutes} from '@/route';
 
 function App() {
     return (
