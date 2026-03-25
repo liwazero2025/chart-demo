@@ -40,6 +40,12 @@ export function HomeDirectoryNav() {
             >
                 股票图
             </NavLink>
+            <NavLink
+                to="/radar"
+                className={navLinkClassName}
+            >
+                等级评分雷达
+            </NavLink>
         </nav>
     );
 }

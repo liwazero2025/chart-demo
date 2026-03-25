@@ -17,5 +17,6 @@ describe('Home', () => {
         expect(screen.getByRole('heading', {level: 1, name: '首页'})).toBeInTheDocument();
         expect(screen.getByRole('navigation', {name: '页面目录'})).toBeInTheDocument();
         expect(screen.getByRole('link', {name: '股票图'})).toBeInTheDocument();
+        expect(screen.getByRole('link', {name: '等级评分雷达'})).toBeInTheDocument();
     });
 });
