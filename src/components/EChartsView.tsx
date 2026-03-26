@@ -4,7 +4,6 @@
 import type {ECharts, EChartsOption} from 'echarts';
 import * as echarts from 'echarts';
 import {useEffect, useLayoutEffect, useRef, type CSSProperties} from 'react';
-
 export type EChartsViewProps = {
     option?: EChartsOption | null;
     style?: CSSProperties;

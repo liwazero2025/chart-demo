@@ -3,6 +3,9 @@
  */
 import type {IndexId, OhlcBar, OverlayLineSpec, StockBundle} from './stockTypes';
 
+/** 一天的毫秒数：按 UTC 自然日递增一根 K 线（演示用，非真实交易日历） */
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 function mulberry32(seed: number) {
     return function () {
         let t = (seed += 0x6d2b79f5);
@@ -44,7 +47,7 @@ export function generateMockStockBundle(dayCount = 180): StockBundle {
     let close = 100 + rand() * 20;
 
     for (let i = 0; i < dayCount; i++) {
-        const time = start + i * 86_400_000;
+        const time = start + i * MS_PER_DAY;
         const dailyVol = 0.02 + rand() * 0.03;
         const change = (rand() - 0.48) * dailyVol;
         const open = close;
