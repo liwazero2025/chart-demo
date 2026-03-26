@@ -11,6 +11,10 @@ const isVitest = Boolean(process.env.VITEST);
 
 // https://vite.dev/config/
 export default defineConfig({
+    server: {
+        /** 监听 0.0.0.0，便于手机通过局域网 IP 访问（如 http://192.168.x.x:5173） */
+        host: true
+    },
     resolve: {
         alias: {
             '@': path.resolve(__dirname, 'src')
