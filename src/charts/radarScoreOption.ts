@@ -2,10 +2,7 @@
  * @format
  */
 import type {EChartsOption} from 'echarts';
-import {RADAR_SCORE_DIMENSIONS, type RadarScoreBundle} from '../domain/radarScoreTypes';
-
-const SCORE_MIN = 0;
-const SCORE_MAX = 100;
+import type {RadarScoreBundle} from '../domain/radarScoreTypes';
 
 /** 设计稿画布宽度（px），用于 rem 换算说明 */
 const DESIGN_WIDTH_PX = 750;
@@ -35,23 +32,32 @@ function splitLineColorsOuterRingOnly(lineColor: string): string[] {
     );
 }
 
-function clampScore(n: number): number {
-    if (Number.isNaN(n)) return SCORE_MIN;
-    return Math.min(SCORE_MAX, Math.max(SCORE_MIN, n));
+function clampScore(n: number, min: number, max: number): number {
+    if (Number.isNaN(n)) return min;
+    return Math.min(max, Math.max(min, n));
 }
 
-/** 四项算术平均分 */
-function averageFour(v0: number, v1: number, v2: number, v3: number): number {
-    return (v0 + v1 + v2 + v3) / 4;
+function average(values: number[]): number {
+    if (values.length === 0) return 0;
+    return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
 /**
- * 由四项均分得到等级：>80 卓越、>70 优秀、>55 良好，否则一般
+ * 将当前径向区间上的算术平均，归一化到 0–100，供等级阈值比较（与默认 0–100 档一致）。
  */
-export function getCompositeRatingLabel(avg: number): '卓越' | '优秀' | '良好' | '一般' {
-    if (avg > 80) return '卓越';
-    if (avg > 70) return '优秀';
-    if (avg > 55) return '良好';
+function averageNormalizedToRatingScale(values: number[], radialMin: number, radialMax: number): number {
+    const avg = average(values);
+    if (radialMax <= radialMin) return 0;
+    return ((avg - radialMin) / (radialMax - radialMin)) * 100;
+}
+
+/**
+ * 由归一化到 0–100 的均分得到等级：>80 卓越、>70 优秀、>55 良好，否则一般
+ */
+export function getCompositeRatingLabel(avgNormalized: number): '卓越' | '优秀' | '良好' | '一般' {
+    if (avgNormalized > 80) return '卓越';
+    if (avgNormalized > 70) return '优秀';
+    if (avgNormalized > 55) return '良好';
     return '一般';
 }
 
@@ -94,19 +100,39 @@ function levelAccent(level: ReturnType<typeof getCompositeRatingLabel>): {
 }
 
 /**
- * 构建等级评分雷达图：刻度 0–100，通过内外半径使 0 落在内圈、100 落在外圈（几何中心至内圈留白）；不展示径向刻度数字。
+ * 构建等级评分雷达图：角向维度由 `indicators` 配置（1～n 项），径向范围由 `radialMin`/`radialMax` 配置；
+ * 通过内外半径使最小值落在内圈、最大值落在外圈；不展示径向刻度数字。
  */
 export function buildRadarScoreOption(bundle: RadarScoreBundle): EChartsOption {
-    const [v0, v1, v2, v3] = bundle.values.map(clampScore) as RadarScoreBundle['values'];
-    const avg = averageFour(v0, v1, v2, v3);
+    const {indicators, title, values} = bundle;
+    const radialMin = bundle.radialMin ?? 0;
+    const radialMax = bundle.radialMax ?? 100;
+
+    if (indicators.length === 0) {
+        return {
+            title: {text: title ?? '等级评分雷达', left: 'center', top: 8},
+            radar: {indicator: []},
+            series: []
+        };
+    }
+
+    if (values.length !== indicators.length) {
+        throw new Error(
+            `RadarScoreBundle: values.length (${values.length}) must match indicators.length (${indicators.length})`
+        );
+    }
+
+    const clamped = values.map(v => clampScore(v, radialMin, radialMax));
+    const avg = average(clamped);
     const avgText = avg.toFixed(1);
-    const level = getCompositeRatingLabel(avg);
+    const ratingNorm = averageNormalizedToRatingScale(clamped, radialMin, radialMax);
+    const level = getCompositeRatingLabel(ratingNorm);
     const accent = levelAccent(level);
 
     return {
         animation: true,
         title: {
-            text: bundle.title ?? '等级评分雷达',
+            text: title ?? '等级评分雷达',
             left: 'center',
             top: 8,
             textStyle: {fontSize: 16, fontWeight: 600}
@@ -125,7 +151,7 @@ export function buildRadarScoreOption(bundle: RadarScoreBundle): EChartsOption {
                 z: 10,
                 silent: true,
                 style: {
-                    text: `{t|综合评分}\n{a|四项平均分 ${avgText}}\n{lv|${level}}`,
+                    text: `{t|综合评分}\n{a|各项平均分 ${avgText}}\n{lv|${level}}`,
                     textAlign: 'center',
                     textVerticalAlign: 'middle',
                     fill: accent.line,
@@ -158,15 +184,14 @@ export function buildRadarScoreOption(bundle: RadarScoreBundle): EChartsOption {
         ],
         radar: {
             center: [...RADAR_DRAW_CENTER],
-            /** 内圈 = 0 分，外圈 = 100 分；几何中心在内外圈之间留白 */
             radius: ['26%', '62%'],
             startAngle: 90,
             shape: 'polygon',
             splitNumber: RADAR_SPLIT_NUMBER,
-            indicator: RADAR_SCORE_DIMENSIONS.map(name => ({
+            indicator: indicators.map(name => ({
                 name,
-                min: SCORE_MIN,
-                max: SCORE_MAX
+                min: radialMin,
+                max: radialMax
             })),
             axisName: {
                 color: '#64748b',
@@ -209,7 +234,7 @@ export function buildRadarScoreOption(bundle: RadarScoreBundle): EChartsOption {
                     lineStyle: {width: 3, color: accent.line},
                     areaStyle: {color: accent.areaEm}
                 },
-                data: [{value: [v0, v1, v2, v3], name: '综合评分'}]
+                data: [{value: clamped, name: '综合评分'}]
             }
         ]
     };
