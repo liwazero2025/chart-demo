@@ -1,0 +1,15 @@
+# <type>(<scope>): <subject>
+#
+# Type 可选: feat, fix, docs, style, refactor, perf, test, chore, ci, revert
+# Scope 可选: api, ui, chart, route, test, config, deps
+#
+# Subject: 动词开头，不超过 50 字符，不要句号
+
+# Body: 详细说明（可选）
+# - 为什么做这个变更
+# - 解决了什么问题
+# - 相关 Issue/PR 编号
+
+# Footer: 破坏性变更/关联信息（可选）
+# BREAKING CHANGE:
+# Closes #
